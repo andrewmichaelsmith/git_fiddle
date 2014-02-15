@@ -32,26 +32,25 @@ def get_file_name():
     return args.file_name
 
 def create_repo_with_file(file_name):
+    """
+        You want a file called "..", we make a git repo
+        with a file called "aa".
+
+        We then take the tree that points to "aa" and replace
+        it with ".."
+
+        This is quite a hacky way to do this.
+    """
     repo_dir = create_new_base_repo()
 
     repo = Repo(repo_dir)
 
-    #UGLY BIT
-    #This is to get around the fact that index.add checks the file
-    #exists. Could probably get around this in a more intelligent
-    #way
     fake_file_name = "a" * len(file_name)
     open("%s/%s" % (repo_dir, fake_file_name), 'a').close()
 
     repo.index.add([fake_file_name])
 
     file_index = repo.index.entries[(fake_file_name, 0)]
-
-    new_file_index = IndexEntry((file_index[0], file_index[1], file_index[2], file_name))
-
-    repo.index.entries[(fake_file_name, 0)] = new_file_index
-    #/UGLY BIT
-
 
     commit = repo.index.commit("my first commit")
 
