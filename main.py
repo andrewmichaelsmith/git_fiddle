@@ -2,24 +2,30 @@ import logging
 import tempfile
 import os
 import sys
+import tarfile
 
 from git import (
     Repo,
 )
+
+ROOT             = os.path.dirname(os.path.realpath(__file__))
+BASE_REPO_TAR_GZ = "%s/%s" % (ROOT, "base-repo.tar.gz")
+
 def run():
 
     init()
 
-    base_repo = "%s/base/" % os.path.dirname(os.path.realpath(__file__))
-    base_repo = Repo.clone(base_repo)
+    repo_dir = create_new_base_repo()
 
-    import pdb; pdb.set_trace()
+def create_new_base_repo():
+    base_tar = tarfile.open(BASE_REPO_TAR_GZ)
+    tmp = create_tmp_dir()
 
-    repo = create_repo(base_repo)
+    base_tar.extractall(path=tmp)
 
-def create_repo(base_repo):
-    loc = create_tmp_dir()
-    return base_repo.clone(loc)
+    logging.info("Created base repo at %s", tmp)
+
+    return tmp
 
 def init():
 
