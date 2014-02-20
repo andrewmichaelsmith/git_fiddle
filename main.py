@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 import binascii
 import os
+import zlib
 
 from hashlib import (
     sha1,
@@ -39,7 +40,7 @@ def write(loc, contents):
 
     with open('%s/.git/objects/%s/%s' % (loc, sha_hash[:2], sha_hash[2:]), 'w+') as f:
         logging.info("Writing %s", contents)
-        f.write(contents)
+        f.write(zlib.compress(contents))
 
 def set_head(loc, head):
 
