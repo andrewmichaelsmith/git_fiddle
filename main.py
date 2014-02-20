@@ -1,86 +1,92 @@
-import logging
-import tempfile
-import os
 import sys
-import tarfile
-import argparse
-import hashlib
-import shutil
-import zlib
+import logging
+import subprocess
+import tempfile
+import binascii
+import os
 
-ROOT             = os.path.dirname(os.path.realpath(__file__))
-
-BASE_REPO_TAR_GZ = "%s/%s" % (ROOT, "pre-made-repo.tar.gz")
-#This describes the contents of BASE_REPO_TAR_GZ
-TREE_HASH        = "775a99b79ec5fbdca77d58ca69db102ba9f42098"
-FILE_NAME        = "aaaaa"
+from hashlib import (
+    sha1,
+)
 
 def run():
-
     init()
 
-    file_name = get_file_name()
+    loc = create_tmp_dir()
+    git_init(loc)
 
-    logging.info("Going to try and create a repo called: %s", file_name)
+    #make_object_dir(loc)
 
-    create_repo_with_file(file_name)
+    blob   = create_blob("blah!")
+    tree   = create_tree(blob, "..")
+    commit = create_commit(tree)
 
-def get_file_name():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('file_name', help='file name to create')
+    for f in [blob, tree, commit]:
+        write(loc, f)
 
-    args = parser.parse_args()
+    set_head(loc, commit)
 
-    return args.file_name
+def make_object_dir(loc):
+    os.makedirs("%s/.git/objects")
 
-def create_repo_with_file(file_name):
-    repo_dir = create_new_base_repo()
+def write(loc, contents):
+    sha_hash = get_hash(contents)
 
-    obj_dir = "%s/.git/objects" % repo_dir
+    obj_dir = "%s/.git/objects/%s" % (loc, sha_hash[:2])
 
-    tree_file = "%s/%s/%s" % (obj_dir, TREE_HASH[:2], TREE_HASH[2:])
+    if not os.path.exists(obj_dir):
+        os.makedirs(obj_dir)
 
-    with open(tree_file, 'r+') as f:
-        raw = f.read()
+    with open('%s/.git/objects/%s/%s' % (loc, sha_hash[:2], sha_hash[2:]), 'w+') as f:
+        logging.info("Writing %s", contents)
+        f.write(contents)
 
-        blob = zlib.decompress(raw)
-        blob = blob.replace(FILE_NAME, file_name)
+def set_head(loc, head):
 
-        f.seek(0)
-        f.write(zlib.compress(blob))
-        f.truncate()
-
-
-    new_hash = hashlib.sha1(blob).hexdigest()
-
-    new_tree_dir =  "%s/%s/" % (obj_dir, new_hash[:2])
-
-    if not os.path.exists(new_tree_dir):
-        os.makedirs(new_tree_dir)
-
-    new_tree_file = "%s/%s" % (new_tree_dir, new_hash[2:])
-
-    shutil.move(tree_file, new_tree_file)
-
-
-def create_new_base_repo():
-    base_tar = tarfile.open(BASE_REPO_TAR_GZ)
-    tmp = create_tmp_dir()
-
-    base_tar.extractall(path=tmp)
-
-    logging.info("Created repo at %s", tmp)
-
-    return tmp
+    sha_hash = get_hash(head)
+    with open('%s/.git/refs/heads/master' % loc, 'w+') as f:
+        f.write(sha_hash)
 
 def init():
-
     logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
+
+def create_blob(contents):
+    #'blob 13\x00test content\n'
+    return "blob %d\x00%s" % (len(contents), contents)
+
+def create_tree(blob, file_name):
+
+    blob_sha1 = get_hash(blob)
+
+    mode = '100644'
+    byte_sha1 = binascii.unhexlify(blob_sha1)
+    tree_base = "%s %s\x00%s" % (mode, file_name, blob_sha1)
+    return "tree %d\x00%s" % (len(tree_base), tree_base)
+
+def create_commit(tree):
+
+    tree_hash = get_hash(tree)
+
+    #commit 153\x00tree 80865964295ae2f11d27383e5f9c0b58a8ef21da\nauthor Woop <woop@woop.com> 1392929224 +0000\ncommitter Woop <woop@woop.com> 1392929224 +0000\n\nfirst commit\n
+    author_line     = "author Woop <woop@woop.com> 1392929224 +0000"
+    committer_line  = "committer Woop <woop@woop.com> 1392929224 +0000"
+    commit_msg      = "first commit"
+
+    commit_base = "tree %s\n%s\n%s\n\n%s\n" % (tree_hash, author_line, committer_line, commit_msg)
+    return "commit %d\x00%s" % (len(commit_base), commit_base)
 
 def create_tmp_dir():
     loc = tempfile.mkdtemp()
     logging.info("Created %s", loc)
     return loc
 
-if __name__ == "__main__":
+def git_init(loc):
+    p = subprocess.Popen(['git', 'init'], cwd=loc)
+    p.wait()
+
+def get_hash(contents):
+    return sha1(contents).hexdigest()
+
+if __name__ ==  "__main__":
     run()
+
