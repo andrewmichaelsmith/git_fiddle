@@ -56,12 +56,13 @@ def create_blob(contents):
     return "blob %d\x00%s" % (len(contents), contents)
 
 def create_tree(blob, file_name):
-
+    #'tree 29\x00100644 a\x00\xe6\x9d\xe2\x9b\xb2\xd1\xd6CK\x8b)\xaewZ\xd8\xc2\xe4\x8cS\x91'
     blob_sha1 = get_hash(blob)
 
     mode = '100644'
     byte_sha1 = binascii.unhexlify(blob_sha1)
-    tree_base = "%s %s\x00%s" % (mode, file_name, blob_sha1)
+    tree_base = "%s %s\x00%s" % (mode, file_name, byte_sha1)
+
     return "tree %d\x00%s" % (len(tree_base), tree_base)
 
 def create_commit(tree):
