@@ -2,9 +2,11 @@ import sys
 import subprocess
 import logging
 import git_repo_create_main
+import os
 
 from config import (
-    FILE_LIST
+    FILE_LIST,
+    REMOTE,
 )
 
 
@@ -12,7 +14,6 @@ def run():
     init()
 
     contents = ":-)"
-    repo     = "https://github.com/moogleshoogle2/oink.git"
 
     worked = []
     failed = []
@@ -33,12 +34,17 @@ def run():
 
 def git_push(loc):
 
+    branch_name = os.path.basename(loc)
+
     logging.info("Trying to push %s", loc)
 
-    p = subprocess.Popen(['git', 'remote', 'add', 'origin', 'git@github.com:moogleshoogle2/rop.git'], cwd=loc)
+    p = subprocess.Popen(['git', 'remote', 'add', 'origin', REMOTE], cwd=loc)
     p.wait()
 
-    p = subprocess.Popen(['git', 'push', '-u', 'origin', 'master'], cwd=loc)
+    p = subprocess.Popen(['git', 'checkout', '-b', branch_name], cwd=loc)
+    p.wait()
+
+    p = subprocess.Popen(['git', 'push', '-u', 'origin', branch_name], cwd=loc)
     code = p.wait()
 
     return code == 0
