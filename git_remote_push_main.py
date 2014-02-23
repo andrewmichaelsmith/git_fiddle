@@ -7,6 +7,7 @@ import os
 from config import (
     FILE_LIST,
     REMOTE,
+    BRANCH_NAME,
 )
 
 
@@ -34,7 +35,7 @@ def run():
 
 def git_push(loc):
 
-    branch_name = os.path.basename(loc)
+    branch_name = BRANCH_NAME or os.path.basename(loc)
 
     logging.info("Trying to push %s", loc)
 
@@ -42,6 +43,9 @@ def git_push(loc):
     p.wait()
 
     p = subprocess.Popen(['git', 'checkout', '-b', branch_name], cwd=loc)
+    p.wait()
+
+    p = subprocess.Popen(['git', 'pull', 'origin', branch_name])
     p.wait()
 
     p = subprocess.Popen(['git', 'push', '-u', 'origin', branch_name], cwd=loc)

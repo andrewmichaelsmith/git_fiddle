@@ -13,7 +13,8 @@ from hashlib import (
 from config import (
     USERNAME,
     EMAIL,
-    TIMESTAMP,
+    AUTHOR_TIMESTAMP,
+    COMMITTER_TIMESTAMP,
 )
 
 def run():
@@ -76,8 +77,8 @@ def create_commit(tree):
     tree_hash = get_hash(tree)
 
     #commit 153\x00tree 80865964295ae2f11d27383e5f9c0b58a8ef21da\nauthor Woop <woop@woop.com> 1392929224 +0000\ncommitter Woop <woop@woop.com> 1392929224 +0000\n\nfirst commit\n
-    author_line     = "author %s <%s> %s +0000" % (USERNAME, EMAIL, TIMESTAMP)
-    committer_line  = "committer %s <%s> %s +0000" % (USERNAME, EMAIL, TIMESTAMP)
+    author_line     = "author %s <%s> %s +0000" % (USERNAME, EMAIL, AUTHOR_TIMESTAMP)
+    committer_line  = "committer %s <%s> %s +0000" % (USERNAME, EMAIL, COMMITTER_TIMESTAMP)
     commit_msg      = "first commit"
 
     commit_base = "tree %s\n%s\n%s\n\n%s\n" % (tree_hash, author_line, committer_line, commit_msg)
