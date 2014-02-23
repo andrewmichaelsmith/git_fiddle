@@ -10,16 +10,22 @@ from hashlib import (
     sha1,
 )
 
+from config import (
+    USERNAME,
+    EMAIL,
+)
+
 def run():
     init()
+    create_repo("..", "blah!")
+
+def create_repo(file_name, file_contents):
 
     loc = create_tmp_dir()
     git_init(loc)
 
-    #make_object_dir(loc)
-
-    blob   = create_blob("blah!")
-    tree   = create_tree(blob, "..")
+    blob   = create_blob(file_contents)
+    tree   = create_tree(blob, file_name)
     commit = create_commit(tree)
 
     for f in [blob, tree, commit]:
@@ -27,8 +33,7 @@ def run():
 
     set_head(loc, commit)
 
-def make_object_dir(loc):
-    os.makedirs("%s/.git/objects")
+    return loc
 
 def write(loc, contents):
     sha_hash = get_hash(contents)
@@ -70,8 +75,8 @@ def create_commit(tree):
     tree_hash = get_hash(tree)
 
     #commit 153\x00tree 80865964295ae2f11d27383e5f9c0b58a8ef21da\nauthor Woop <woop@woop.com> 1392929224 +0000\ncommitter Woop <woop@woop.com> 1392929224 +0000\n\nfirst commit\n
-    author_line     = "author Woop <woop@woop.com> 1392929224 +0000"
-    committer_line  = "committer Woop <woop@woop.com> 1392929224 +0000"
+    author_line     = "author %s <%s> 1392929224 +0000" % (USERNAME, EMAIL)
+    committer_line  = "committer %s <%s> 1392929224 +0000" % (USERNAME, EMAIL)
     commit_msg      = "first commit"
 
     commit_base = "tree %s\n%s\n%s\n\n%s\n" % (tree_hash, author_line, committer_line, commit_msg)
