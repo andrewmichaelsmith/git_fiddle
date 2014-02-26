@@ -12,7 +12,8 @@ def run():
     init()
     #basic_repo()
     #one_level_repo()
-    multiple_commits()
+    #multiple_commits()
+    basic_repo_push()
 
 
 def multiple_commits():
@@ -51,6 +52,12 @@ def basic_repo():
     repo.set_head(commit)
     repo.write()
 
+def basic_repo_push():
+
+    repo = Repo()
+    repo.set_head(Commit(None, Tree([Blob(body="xx", name="boo")])))
+
+    repo.git_push()
 
 
 def init():

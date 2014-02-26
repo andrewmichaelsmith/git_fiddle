@@ -14,6 +14,7 @@ from config import (
     EMAIL,
     AUTHOR_TIMESTAMP,
     COMMITTER_TIMESTAMP,
+    REMOTE,
 )
 
 class GitObject(object):
@@ -143,9 +144,11 @@ class Repo(object):
         proc = subprocess.Popen(['git', 'init'], cwd=self.dir)
         proc.wait()
 
-    def git_push(self, remote, branch=None):
+    def git_push(self, remote=REMOTE, branch=None):
 
-        branch = branch or self.dir
+        self.write()
+
+        branch = branch or os.path.basename(self.dir)
 
         logging.info("Trying to push %s", branch)
 
@@ -172,6 +175,4 @@ class Repo(object):
         return code == 0
 
 
-if __name__ ==  "__main__":
-    run()
 
