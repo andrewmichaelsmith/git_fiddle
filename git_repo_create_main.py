@@ -132,7 +132,14 @@ class Commit(GitObject):
 
     def __str__(self):
         commit_base = "tree %s\n%s%s\n%s\n\n%s\n" % \
-                (self.tree.get_hash(), self.parent_line, self.author_line, self.committer_line, self.commit_msg)
+                (
+                    self.tree.get_hash(),
+                    self.parent_line,
+                    self.author_line,
+                    self.committer_line,
+                    self.commit_msg
+                 )
+
         return "commit %d\x00%s" % (len(commit_base), commit_base)
 
 class Repo(object):
@@ -158,6 +165,10 @@ class Repo(object):
     def write(self):
         self.write_commit(self.head)
 
+        if self.head:
+            with open('%s/.git/refs/heads/master' % self.dir, 'w+') as f:
+                f.write(self.head.get_hash())
+
     def write_commit(self, commit):
         self.write_all(commit.tree)
 
@@ -168,16 +179,13 @@ class Repo(object):
         if commit.parent:
             self.write_commit(commit.parent)
 
-        if self.head:
-            with open('%s/.git/refs/heads/master' % self.dir, 'w+') as f:
-                f.write(self.head.get_hash())
 
     def write_all(self, parent):
-      for child in parent.children:
-          child.write(self.dir)
+        for child in parent.children:
+            child.write(self.dir)
 
-          if hasattr(child, 'children'):
-              self.write_all(child)
+        if hasattr(child, 'children'):
+            self.write_all(child)
 
 
     def git_init(self):
@@ -186,21 +194,29 @@ class Repo(object):
 
     def git_push(self, remote, branch=None):
 
-        self.branch = branch or self.dir
+        branch = branch or self.dir
 
-        logging.info("Trying to push %s", self.branch)
+        logging.info("Trying to push %s", branch)
 
-        p = subprocess.Popen(['git', 'remote', 'add', 'origin', remote], cwd=self.dir)
-        p.wait()
+        subprocess.Popen(
+            ['git', 'remote', 'add', 'origin', remote],
+            cwd=self.dir
+        ).wait()
 
-        p = subprocess.Popen(['git', 'checkout', '-b', branch], cwd=self.dir)
-        p.wait()
+        subprocess.Popen(
+            ['git', 'checkout', '-b', branch],
+            cwd=self.dir
+        ).wait()
 
-        p = subprocess.Popen(['git', 'pull', 'origin', branch], cwd=self.dir)
-        p.wait()
+        subprocess.Popen(
+            ['git', 'pull', 'origin', branch],
+            cwd=self.dir
+        ).wait()
 
-        p = subprocess.Popen(['git', 'push', '-u', 'origin', branch], cwd=self.dir)
-        code = p.wait()
+        code = subprocess.Popen(
+            ['git', 'push', '-u', 'origin', branch],
+            cwd=self.dir
+        ).wait()
 
         return code == 0
 
