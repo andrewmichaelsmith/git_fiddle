@@ -150,16 +150,24 @@ class Repo(object):
 
         for commit in self.commits:
 
-            for child in commit.tree.children:
-                child.write(self.dir)
+            self.write_all(commit.tree)
 
             commit.tree.write(self.dir)
+
             commit.write(self.dir)
 
 
         if self.head:
             with open('%s/.git/refs/heads/master' % self.dir, 'w+') as f:
                 f.write(self.head.get_hash())
+
+    def write_all(self, parent):
+      for child in parent.children:
+          child.write(self.dir)
+
+          if hasattr(child, 'children'):
+              self.write_all(child)
+
 
     def git_init(self):
         proc = subprocess.Popen(['git', 'init'], cwd=self.dir)
