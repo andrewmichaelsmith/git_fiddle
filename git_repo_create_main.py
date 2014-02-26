@@ -20,15 +20,28 @@ from config import (
 def run():
     init()
     #basic_repo()
-    one_level_repo()
+    #one_level_repo()
+    multiple_commits()
 
+
+def multiple_commits():
+
+    commit_1 = Commit(None, Tree([Blob(body="xx", name="HI")]))
+    commit_2 = Commit(commit_1, Tree([Blob(body="yy", name="HO")]))
+
+    repo = Repo()
+    repo.set_head(commit_2)
+
+    #Andy Todo
+
+    repo.write()
 
 def one_level_repo():
 
     tree_a = Tree([Blob(body="xx", name="boo")], name="boogaloo")
     tree_b = Tree([tree_a])
 
-    commit = Commit(tree_b)
+    commit = Commit(None, tree_b)
 
     repo = Repo()
     repo.set_head(commit)
@@ -41,7 +54,7 @@ def basic_repo():
         blobs.append(Blob(body="hi", name="..%s" % x))
 
     tree = Tree(blobs)
-    commit = Commit(tree)
+    commit = Commit(None,tree)
 
     repo = Repo()
     repo.set_head(commit)
@@ -79,7 +92,6 @@ class Blob(GitObject):
         self.name = name
 
     def __str__(self):
-        #'blob 13\x00test content\n'
         return "blob %d\x00%s" % (len(self.body), self.body)
 
 class Tree(GitObject):
@@ -92,10 +104,6 @@ class Tree(GitObject):
         self.name = name
 
     def __str__(self):
-        #'tree 29\x00100644 a\x00\xe6\x9d\xe2\x9b\xb2\xd1\xd6CK\x8b)\xaewZ\xd8\xc2\xe4\x8cS\x91'
-        #or
-        #'tree 174\x00100644 a\x00\xe6\x9d\xe2\x9b\xb2\xd1\xd6CK\x8b)\xaewZ\xd8\xc2\xe4\x8cS\x91100644 b\x00\xe6\x9d\xe2\x9b\xb2\xd1\xd6CK\x8b)\xaewZ\xd8\xc2\xe4\x8cS\x91100644 c\x00\xe6\x9d\xe2\x9b\xb2\xd1\xd6CK\x8b)\xaewZ\xd8\xc2\xe4\x8cS\x91100644 d\x00\xe6\x9d\xe2\x9b\xb2\xd1\xd6CK\x8b)\xaewZ\xd8\xc2\xe4\x8cS\x91100644 e\x00\xe6\x9d\xe2\x9b\xb2\xd1\xd6CK\x8b)\xaewZ\xd8\xc2\xe4\x8cS\x91100644 f\x00\xe6\x9d\xe2\x9b\xb2\xd1\xd6CK\x8b)\xaewZ\xd8\xc2\xe4\x8cS\x91'
-
         tree_base = ""
 
         for child in self.children:
@@ -109,17 +117,22 @@ class Commit(GitObject):
     """
         A commit object. We don't do parents yet.
     """
-    def __init__(self, tree, username=USERNAME, email=EMAIL, author_time=AUTHOR_TIMESTAMP, committer_time=COMMITTER_TIMESTAMP, commit_msg="first commit"):
+    def __init__(self, parent, tree, username=USERNAME, email=EMAIL, author_time=AUTHOR_TIMESTAMP, committer_time=COMMITTER_TIMESTAMP, commit_msg="first commit"):
         self.tree = tree
         self.author_line = "author %s <%s> %s +0000" % \
                 (username, email, author_time)
         self.committer_line = "committer %s <%s> %s +0000" % \
                 (username, email, committer_time)
         self.commit_msg = commit_msg
+        self.parent = parent
+        if parent:
+            self.parent_line = "parent %s\n" % parent.get_hash()
+        else:
+            self.parent_line = ""
 
     def __str__(self):
-        commit_base = "tree %s\n%s\n%s\n\n%s\n" % \
-                (self.tree.get_hash(), self.author_line, self.committer_line, self.commit_msg)
+        commit_base = "tree %s\n%s%s\n%s\n\n%s\n" % \
+                (self.tree.get_hash(), self.parent_line, self.author_line, self.committer_line, self.commit_msg)
         return "commit %d\x00%s" % (len(commit_base), commit_base)
 
 class Repo(object):
@@ -141,21 +154,19 @@ class Repo(object):
 
     def set_head(self, commit):
         self.head = commit
-        self.commits.add(commit)
-
-    def add_commit(self, commit):
-        self.commits.add(commit)
 
     def write(self):
+        self.write_commit(self.head)
 
-        for commit in self.commits:
+    def write_commit(self, commit):
+        self.write_all(commit.tree)
 
-            self.write_all(commit.tree)
+        commit.tree.write(self.dir)
 
-            commit.tree.write(self.dir)
+        commit.write(self.dir)
 
-            commit.write(self.dir)
-
+        if commit.parent:
+            self.write_commit(commit.parent)
 
         if self.head:
             with open('%s/.git/refs/heads/master' % self.dir, 'w+') as f:
