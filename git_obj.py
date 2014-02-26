@@ -122,7 +122,7 @@ class Repo(object):
                 f.write(self.head.get_hash())
 
     def write_commit(self, commit):
-        self.write_all(commit.tree)
+        self.write_tree(commit.tree)
 
         commit.tree.write(self.dir)
 
@@ -132,12 +132,12 @@ class Repo(object):
             self.write_commit(commit.parent)
 
 
-    def write_all(self, parent):
+    def write_tree(self, parent):
         for child in parent.children:
             child.write(self.dir)
 
         if hasattr(child, 'children'):
-            self.write_all(child)
+            self.write_tree(child)
 
 
     def git_init(self):
