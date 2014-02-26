@@ -19,48 +19,28 @@ from config import (
 
 def run():
     init()
-    basic_repo()
+    #basic_repo()
+    one_level_repo()
 
 
+def one_level_repo():
 
-#Def create_repo2():
-#
-#    loc = create_tmp_dir()
-#    git_init(loc)
-#
-#    blob   = create_blob("whaa")
-#    tree   = create_tree('100644', get_hash(blob), "hi")
-#    tree2  = create_tree('40000', get_hash(tree), "..")
-#    commit = create_commit(tree2)
-#
-#    for f in [blob, tree, commit]:
-#        write(loc, f)
-#
-#    set_head(loc, commit)
-#
-#    return loc
-#
-#
-#def create_repo(mode, file_name, file_contents):
-#
-#    loc = create_tmp_dir()
-#    git_init(loc)
-#
-#    blob   = create_blob(file_contents)
-#    tree   = create_tree(mode, get_hash(blob), file_name)
-#    commit = create_commit(tree)
-#
-#    for f in [blob, tree, commit]:
-#        write(loc, f)
-#
-#    set_head(loc, commit)
-#
-#    return loc
+    tree_a = Tree([Blob(body="xx", name="boo")], name="boogaloo")
+    tree_b = Tree([tree_a])
+
+    commit = Commit(tree_b)
+
+    repo = Repo()
+    repo.set_head(commit)
+    repo.write()
 
 def basic_repo():
 
-    blob = Blob(body="hi", file_name="..")
-    tree = Tree([blob])
+    blobs = []
+    for x in xrange(100):
+        blobs.append(Blob(body="hi", name="..%s" % x))
+
+    tree = Tree(blobs)
     commit = Commit(tree)
 
     repo = Repo()
@@ -93,10 +73,10 @@ class GitObject(object):
         return binascii.unhexlify(self.get_hash())
 
 class Blob(GitObject):
-    def __init__(self, body, file_name, mode='100644'):
+    def __init__(self, body, name, mode='100644'):
         self.body = body
         self.mode = mode
-        self.file_name = file_name
+        self.name = name
 
     def __str__(self):
         #'blob 13\x00test content\n'
@@ -106,9 +86,10 @@ class Tree(GitObject):
     """
         A tree object
     """
-    def __init__(self, children, mode='0040000'):
+    def __init__(self, children, mode='0040000', name=None):
         self.children = children
         self.mode = mode
+        self.name = name
 
     def __str__(self):
         #'tree 29\x00100644 a\x00\xe6\x9d\xe2\x9b\xb2\xd1\xd6CK\x8b)\xaewZ\xd8\xc2\xe4\x8cS\x91'
@@ -119,7 +100,7 @@ class Tree(GitObject):
 
         for child in self.children:
             tree_base += "%s %s\x00%s" % \
-                    (child.mode, child.file_name, child.get_byte_hash())
+                    (child.mode, child.name, child.get_byte_hash())
 
         return "tree %d\x00%s" % (len(tree_base), tree_base)
 
@@ -145,10 +126,8 @@ class Repo(object):
 
 
     def __init__(self, dir=None):
-        if not dir:
-            self.dir = self.create_tmp_dir()
-        else:
-            self.dir = dir
+
+        self.dir = dir or self.create_tmp_dir()
 
         self.git_init()
 
@@ -160,12 +139,7 @@ class Repo(object):
         logging.info("Created %s", loc)
         return loc
 
-    def git_init(self):
-        proc = subprocess.Popen(['git', 'init'], cwd=self.dir)
-        proc.wait()
-
     def set_head(self, commit):
-
         self.head = commit
         self.commits.add(commit)
 
@@ -186,6 +160,30 @@ class Repo(object):
         if self.head:
             with open('%s/.git/refs/heads/master' % self.dir, 'w+') as f:
                 f.write(self.head.get_hash())
+
+    def git_init(self):
+        proc = subprocess.Popen(['git', 'init'], cwd=self.dir)
+        proc.wait()
+
+    def git_push(self, remote, branch=None):
+
+        self.branch = branch or self.dir
+
+        logging.info("Trying to push %s", self.branch)
+
+        p = subprocess.Popen(['git', 'remote', 'add', 'origin', remote], cwd=self.dir)
+        p.wait()
+
+        p = subprocess.Popen(['git', 'checkout', '-b', branch], cwd=self.dir)
+        p.wait()
+
+        p = subprocess.Popen(['git', 'pull', 'origin', branch], cwd=self.dir)
+        p.wait()
+
+        p = subprocess.Popen(['git', 'push', '-u', 'origin', branch], cwd=self.dir)
+        code = p.wait()
+
+        return code == 0
 
 
 if __name__ ==  "__main__":
