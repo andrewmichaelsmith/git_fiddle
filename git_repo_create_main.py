@@ -19,82 +19,174 @@ from config import (
 
 def run():
     init()
-    create_repo("..", "blah!")
+    basic_repo()
 
-def create_repo(file_name, file_contents):
 
-    loc = create_tmp_dir()
-    git_init(loc)
 
-    blob   = create_blob(file_contents)
-    tree   = create_tree(blob, file_name)
-    commit = create_commit(tree)
+#Def create_repo2():
+#
+#    loc = create_tmp_dir()
+#    git_init(loc)
+#
+#    blob   = create_blob("whaa")
+#    tree   = create_tree('100644', get_hash(blob), "hi")
+#    tree2  = create_tree('40000', get_hash(tree), "..")
+#    commit = create_commit(tree2)
+#
+#    for f in [blob, tree, commit]:
+#        write(loc, f)
+#
+#    set_head(loc, commit)
+#
+#    return loc
+#
+#
+#def create_repo(mode, file_name, file_contents):
+#
+#    loc = create_tmp_dir()
+#    git_init(loc)
+#
+#    blob   = create_blob(file_contents)
+#    tree   = create_tree(mode, get_hash(blob), file_name)
+#    commit = create_commit(tree)
+#
+#    for f in [blob, tree, commit]:
+#        write(loc, f)
+#
+#    set_head(loc, commit)
+#
+#    return loc
 
-    for f in [blob, tree, commit]:
-        write(loc, f)
+def basic_repo():
 
-    set_head(loc, commit)
+    blob = Blob(body="hi", file_name="..")
+    tree = Tree([blob])
+    commit = Commit(tree)
 
-    return loc
+    repo = Repo()
+    repo.set_head(commit)
+    repo.write()
 
-def write(loc, contents):
-    sha_hash = get_hash(contents)
 
-    obj_dir = "%s/.git/objects/%s" % (loc, sha_hash[:2])
-
-    if not os.path.exists(obj_dir):
-        os.makedirs(obj_dir)
-
-    with open('%s/.git/objects/%s/%s' % (loc, sha_hash[:2], sha_hash[2:]), 'w+') as f:
-        logging.info("Writing %s", contents)
-        f.write(zlib.compress(contents))
-
-def set_head(loc, head):
-
-    sha_hash = get_hash(head)
-    with open('%s/.git/refs/heads/master' % loc, 'w+') as f:
-        f.write(sha_hash)
 
 def init():
     logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
-def create_blob(contents):
-    #'blob 13\x00test content\n'
-    return "blob %d\x00%s" % (len(contents), contents)
+class GitObject(object):
+    def write(self, repo_loc):
+        sha_hash = self.get_hash()
 
-def create_tree(blob, file_name):
-    #'tree 29\x00100644 a\x00\xe6\x9d\xe2\x9b\xb2\xd1\xd6CK\x8b)\xaewZ\xd8\xc2\xe4\x8cS\x91'
-    blob_sha1 = get_hash(blob)
+        obj_dir = "%s/.git/objects/%s" % (repo_loc, sha_hash[:2])
 
-    mode = '100644'
-    byte_sha1 = binascii.unhexlify(blob_sha1)
-    tree_base = "%s %s\x00%s" % (mode, file_name, byte_sha1)
+        if not os.path.exists(obj_dir):
+            os.makedirs(obj_dir)
 
-    return "tree %d\x00%s" % (len(tree_base), tree_base)
+        with open('%s/.git/objects/%s/%s' % (repo_loc, sha_hash[:2], sha_hash[2:]), 'w+') as f:
+            logging.debug("Writing %s", str(self))
+            f.write(zlib.compress(str(self)))
 
-def create_commit(tree):
 
-    tree_hash = get_hash(tree)
+    def get_hash(self):
+        return sha1(str(self)).hexdigest()
 
-    #commit 153\x00tree 80865964295ae2f11d27383e5f9c0b58a8ef21da\nauthor Woop <woop@woop.com> 1392929224 +0000\ncommitter Woop <woop@woop.com> 1392929224 +0000\n\nfirst commit\n
-    author_line     = "author %s <%s> %s +0000" % (USERNAME, EMAIL, AUTHOR_TIMESTAMP)
-    committer_line  = "committer %s <%s> %s +0000" % (USERNAME, EMAIL, COMMITTER_TIMESTAMP)
-    commit_msg      = "first commit"
+    def get_byte_hash(self):
+        return binascii.unhexlify(self.get_hash())
 
-    commit_base = "tree %s\n%s\n%s\n\n%s\n" % (tree_hash, author_line, committer_line, commit_msg)
-    return "commit %d\x00%s" % (len(commit_base), commit_base)
+class Blob(GitObject):
+    def __init__(self, body, file_name, mode='100644'):
+        self.body = body
+        self.mode = mode
+        self.file_name = file_name
 
-def create_tmp_dir():
-    loc = tempfile.mkdtemp()
-    logging.info("Created %s", loc)
-    return loc
+    def __str__(self):
+        #'blob 13\x00test content\n'
+        return "blob %d\x00%s" % (len(self.body), self.body)
 
-def git_init(loc):
-    p = subprocess.Popen(['git', 'init'], cwd=loc)
-    p.wait()
+class Tree(GitObject):
+    """
+        A tree object
+    """
+    def __init__(self, children, mode='0040000'):
+        self.children = children
+        self.mode = mode
 
-def get_hash(contents):
-    return sha1(contents).hexdigest()
+    def __str__(self):
+        #'tree 29\x00100644 a\x00\xe6\x9d\xe2\x9b\xb2\xd1\xd6CK\x8b)\xaewZ\xd8\xc2\xe4\x8cS\x91'
+        #or
+        #'tree 174\x00100644 a\x00\xe6\x9d\xe2\x9b\xb2\xd1\xd6CK\x8b)\xaewZ\xd8\xc2\xe4\x8cS\x91100644 b\x00\xe6\x9d\xe2\x9b\xb2\xd1\xd6CK\x8b)\xaewZ\xd8\xc2\xe4\x8cS\x91100644 c\x00\xe6\x9d\xe2\x9b\xb2\xd1\xd6CK\x8b)\xaewZ\xd8\xc2\xe4\x8cS\x91100644 d\x00\xe6\x9d\xe2\x9b\xb2\xd1\xd6CK\x8b)\xaewZ\xd8\xc2\xe4\x8cS\x91100644 e\x00\xe6\x9d\xe2\x9b\xb2\xd1\xd6CK\x8b)\xaewZ\xd8\xc2\xe4\x8cS\x91100644 f\x00\xe6\x9d\xe2\x9b\xb2\xd1\xd6CK\x8b)\xaewZ\xd8\xc2\xe4\x8cS\x91'
+
+        tree_base = ""
+
+        for child in self.children:
+            tree_base += "%s %s\x00%s" % \
+                    (child.mode, child.file_name, child.get_byte_hash())
+
+        return "tree %d\x00%s" % (len(tree_base), tree_base)
+
+
+class Commit(GitObject):
+    """
+        A commit object. We don't do parents yet.
+    """
+    def __init__(self, tree, username=USERNAME, email=EMAIL, author_time=AUTHOR_TIMESTAMP, committer_time=COMMITTER_TIMESTAMP, commit_msg="first commit"):
+        self.tree = tree
+        self.author_line = "author %s <%s> %s +0000" % \
+                (username, email, author_time)
+        self.committer_line = "committer %s <%s> %s +0000" % \
+                (username, email, committer_time)
+        self.commit_msg = commit_msg
+
+    def __str__(self):
+        commit_base = "tree %s\n%s\n%s\n\n%s\n" % \
+                (self.tree.get_hash(), self.author_line, self.committer_line, self.commit_msg)
+        return "commit %d\x00%s" % (len(commit_base), commit_base)
+
+class Repo(object):
+
+
+    def __init__(self, dir=None):
+        if not dir:
+            self.dir = self.create_tmp_dir()
+        else:
+            self.dir = dir
+
+        self.git_init()
+
+        self.commits = set()
+        self.head = None
+
+    def create_tmp_dir(self):
+        loc = tempfile.mkdtemp()
+        logging.info("Created %s", loc)
+        return loc
+
+    def git_init(self):
+        proc = subprocess.Popen(['git', 'init'], cwd=self.dir)
+        proc.wait()
+
+    def set_head(self, commit):
+
+        self.head = commit
+        self.commits.add(commit)
+
+    def add_commit(self, commit):
+        self.commits.add(commit)
+
+    def write(self):
+
+        for commit in self.commits:
+
+            for child in commit.tree.children:
+                child.write(self.dir)
+
+            commit.tree.write(self.dir)
+            commit.write(self.dir)
+
+
+        if self.head:
+            with open('%s/.git/refs/heads/master' % self.dir, 'w+') as f:
+                f.write(self.head.get_hash())
+
 
 if __name__ ==  "__main__":
     run()
