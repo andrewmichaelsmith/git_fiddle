@@ -92,7 +92,7 @@ class Tree(GitObject):
 
 class Commit(GitObject):
     """
-        A commit object. We don't do parents yet.
+        A commit object.
     """
     def __init__(self, parent, tree, username=USERNAME, email=EMAIL, author_time=AUTHOR_TIMESTAMP, committer_time=COMMITTER_TIMESTAMP, commit_msg="first commit"):
         self.tree = tree
@@ -102,10 +102,12 @@ class Commit(GitObject):
                 (username, email, committer_time)
         self.commit_msg = commit_msg
         self.parent = parent
-        if parent:
-            self.parent_line = "parent %s\n" % parent.get_hash()
-        else:
-            self.parent_line = ""
+
+    @property
+    def parent_line(self):
+        if self.parent:
+            return "parent %s\n" % self.parent.get_hash()
+        return ""
 
     def __str__(self):
         commit_base = "tree %s\n%s%s\n%s\n\n%s\n" % \
