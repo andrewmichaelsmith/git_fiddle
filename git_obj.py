@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import logging
 import subprocess
 import tempfile
@@ -46,6 +49,29 @@ class Blob(GitObject):
     def __str__(self):
         return "blob %d\x00%s" % (len(self.body), self.body)
 
+class Remote(GitObject):
+    """
+        A remote
+
+        The git submodule add <repo> <path> command does a couple of things:
+
+            It clones the submodule from <repo> to the given <path> under the current directory and by default checks out the master branch.
+            It adds the submodule’s clone path to the gitmodules(5) file and adds this file to the index, ready to be committed.
+            It adds the submodule’s current commit ID to the index, ready to be committed.
+
+        Url can be "http://..", "./x" or "../x"
+    """
+    def __init__(self, name, path, url):
+        self.name = name
+        self.path = path
+        self.url = url
+
+    def __str__(self):
+        body = '[submodule "%s"]\n\tpath = %s\n\turl = %s\n' % \
+                (self.name, self.path, self.url)
+
+        return "blob %d\x00%s" % (len(body), body)
+
 class Tree(GitObject):
     """
         A tree object
@@ -63,7 +89,6 @@ class Tree(GitObject):
                     (child.mode, child.name, child.get_byte_hash())
 
         return "tree %d\x00%s" % (len(tree_base), tree_base)
-
 
 class Commit(GitObject):
     """
@@ -103,23 +128,46 @@ class Repo(object):
 
         self.git_init()
 
-        self.commits = set()
         self.head = None
+        self.remotes = set()
 
     def create_tmp_dir(self):
         loc = tempfile.mkdtemp()
         logging.info("Created %s", loc)
         return loc
 
+    def add_remote(self, remote):
+        self.remotes.add(remote)
+
     def set_head(self, commit):
         self.head = commit
 
     def write(self):
+
+        for remote in self.remotes:
+            remote.write(self.dir)
+
         self.write_commit(self.head)
 
         if self.head:
             with open('%s/.git/refs/heads/master' % self.dir, 'w+') as f:
                 f.write(self.head.get_hash())
+
+        self.write_gitmodules()
+
+    def write_gitmodules(self):
+
+        if not self.remotes:
+            return
+
+        gm = ""
+
+        for remote in self.remotes:
+            gm += '[submodule] "%s"\n\tpath = %s\n\turl = %s'
+
+        with open("%s/.gitmodule" % self.dir, 'w+') as f:
+            f.write(gm)
+
 
     def write_commit(self, commit):
         self.write_tree(commit.tree)

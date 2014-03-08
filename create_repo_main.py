@@ -6,25 +6,39 @@ from git_obj import (
     Tree,
     Commit,
     Repo,
+    Remote,
 )
 
 def run():
     init()
-    #basic_repo()
+    basic_repo()
     #one_level_repo()
     #multiple_commits()
-    basic_repo_push()
+    #basic_repo_push()
+    #submodule()
+
+
+def submodule():
+
+    repo = Repo()
+
+    commit_1 = Commit(None, Tree([Blob(body="xx", name="boogalooo")]))
+
+    repo.add_remote(Remote("blah", "bloo", "git://github.com/chneukirchen/rack.git"))
+
+    repo.set_head(commit_1)
+
+
+    repo.git_push()
 
 
 def multiple_commits():
 
-    commit_1 = Commit(None, Tree([Blob(body="xx", name="HI")]))
+    commit_1 = Commit(None, Tree([Blob(body="xx", name="..")]))
     commit_2 = Commit(commit_1, Tree([Blob(body="yy", name="HO")]))
 
     repo = Repo()
     repo.set_head(commit_2)
-
-    #Andy Todo
 
     repo.write()
 
@@ -42,8 +56,7 @@ def one_level_repo():
 def basic_repo():
 
     blobs = []
-    for x in xrange(100):
-        blobs.append(Blob(body="hi", name="..%s" % x))
+    blobs.append(Blob(body="hi", name=".."))
 
     tree = Tree(blobs)
     commit = Commit(None,tree)
