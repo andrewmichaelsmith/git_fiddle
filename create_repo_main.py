@@ -54,6 +54,9 @@ def one_level_repo():
     repo.write()
 
 def basic_repo():
+    """
+        Create a repo with the file ".." in it
+    """
 
     blobs = []
     blobs.append(Blob(body="hi", name=".."))
